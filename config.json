@@ -1,0 +1,125 @@
+{
+  "debug": false,
+  "tag": "tag",
+  "upsamaple_steps": [2, 2, 2] ,
+  //upsampling scale for each iteration of the network. When using same network for all steps - all steps need to be identical.
+  "backprojection": true,
+  //See paper. Network trains on low spatial scale and uses BP in coarse-to-fine fashion.
+  "final_no_BP": true,
+  //If true (and backprojection is true), the final temporal run through the network is w.o. BP. Enables going down spatially one less scale.
+  "checkpoint": "",
+  //load checkpoint. Needs to be same Network type as one specified below
+  "ckpt_first_trained": false,
+  //Requires checkpoint. If ckpt_first_trained is true - will not train the loaded net on the first iteration. Enables examining finetuning on/off for a given network.
+  "fix_network": false,
+  //when fix_network==true trains once and fixes the net, so only trains on single (smallest) spatial scale and iterates with/without BP. REQUIRES ALL upsamaple_steps ARE IDENTICAL
+  "fine_tune": true,
+  //When fine_tune=True, start next step's train with existing network. REQUIRES ALL upsamaple_steps ARE IDENTICAL
+  "working_dir_base": "./results",
+  //Where to save results. If results already exist - advances in numbering
+  "network": "residual",
+  //"base" or "residual". The paper's results are with "residual" (Network's ouput is added to naive upsampling), "base" uses ConvTranspose3d instead.
+  "res3d_up_method": "resize",
+  //method to upsample temporally to use as input add residual to. "resize"-linear/cubic resize, "duplicate"-duplicates frames, "zero_gap"-adds empty frame/s after each real one.
+  "num_epochs": 50000,
+  "fine_tuning_epochs_factor": 2,
+  //factor to divide "num_epochs" by when fine-tuning. Note: divides by this factor for EACH fine-tuning iteration.
+  "num_iter_per_epoch": 10,
+  "batch_size": 10,
+  "save_every": 5000,
+  //saves network's model every X epochs.
+  "val_every": 500,
+  //performs validation and saves results to track progress. Validation upsamples back to input size.
+  "prefix": "",
+  "dtype": "float32",
+  "data": {
+    "params": {
+      "frames_folder": "./Example_data/blur8/billiard",
+	  //Input frames folder
+      "prefix": "",
+	  //If frame names containg prefix, such as "frame00020.png", "prefix" needs to be "frame"
+	  "hr_lr_relation": 0,
+	  //0: full exposure: blur+sample 2 frames, 1: delta: sample 2 frames. In paper used "full exposure"
+	  "gradient_percentile": 70,
+	  //Used for crop selection. Should not change.
+	  "augmentation_params": {
+		"crop_sizes": {
+		  "crop_size_spatial": 16,
+		  "loss_mask_spatial": 0,
+		  //loss_mask: how much to ignore patch AT EACH SIDE
+		  "crop_size_temporal": 16,
+		  "loss_mask_temporal": 2
+		},
+		"spatial_resize_options": [1.0, 0.9, 0.81, 0.73, 0.65, 0.59, 0.53, 0.47, 0.43, 0.38, 0.34, 0.31, 0.28, 0.25] ,
+		"temporal_jump_options": [1, 2, 3, 4, 5],
+		//Resizes for creating additional HR training examples.
+        "within": {
+		//Parameters for "within dimension" training examples. See paper.
+		  "probability": 0.4,
+          "flip_prob": 0.33,
+		  "rotation_prob": 0.5,
+		  "z_flip_prob": 0.33
+        },
+        "across": {
+		//Parameters for "across dimension" training examples. See paper.
+		  "probability": 0.4,
+		  "prob_ver_new_z": 0.5,
+		  "prob_hor_new_z": 0.5,
+		  "new_z_sample_range": [1, 2],
+		  "flip_prob": 0.33,
+		  "rotation_prob": 0.5,
+		  "new_z_flip_prob": 0.33
+		  //rotation and flip should be only in directions that are ok
+        },
+        "shift": {
+		//Parameters for shifted training examples. See paper.
+          "probability": 0.2,
+          "range_hor": [-1, 1],
+		  "range_ver": [-1, 1],
+		  "entire_pixels": true,
+		  "prob_for_across": 0.3,
+		  //probability the shifted crop will be permuted and used as across example. Else, as within.
+		  "flip_prob": 0.3,
+		  "rotation_prob": 0.5,
+		  "z_flip_prob": 0.0,
+		  "valid": true
+        }
+      },
+	  "eval_params": {
+		"size_frames": 16,
+        "size_height": 36,
+        "size_width": 36,
+		"pad_frames": 4,
+        "pad_height": 8,
+        "pad_width": 8
+	  }
+    }
+  },
+  "loss": {
+    "name": "MSE",
+    "params": {
+    }
+  },
+  "optimization": {
+    "name": "Adam",
+    "params": {
+      "lr": 0.001,
+	  "SGD_momentum": 0.9
+    }
+  },
+  "lr_sched": {
+    "name": "StepLR",
+    // MultiStepLR - for manually set milestones , StepLR for % out of total epochs
+    "params": {
+      "gamma": 0.5,
+      "step_size": 0.25,
+      "milestones": [
+        30000,
+        40000,
+        45000
+      ]
+    }
+  },
+  "trainer" : {
+  }
+}
